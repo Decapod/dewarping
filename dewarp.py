@@ -609,9 +609,6 @@ def dewarp_page(points,outpath,poly_sep,direction,no_run,area_sep,maxratio=2.5,t
         plot(-p3d_book2[:,0],p3d_book2[:,2],'go')
         plot(-uppers[:,0],uppers[:,2],'ro')
         plot(-lowers[:,0],lowers[:,2],'bo')
-        #plot(-line0_2[:,0],line0_2[:,2],'yo')
-        #print -line0_2[0,0],line0_2[0,2]
-        #print -line0_2[1,0],line0_2[1,2]
         plot(-xp,polyu(xp),'r-',-xp,polyl(xp),'b-',linewidth=2.5)
         fname = sys.argv[4]+"/poly"+str(no_run)+".png"
         savefig(fname,dpi=320)
@@ -651,7 +648,20 @@ def dewarp_page(points,outpath,poly_sep,direction,no_run,area_sep,maxratio=2.5,t
     ##         pos = p0+ratio*v
     ##         dewarped[j,i,:] = col_at(imgl_col,pos[0],pos[1],poly_sep,direction)
 
-    imsave(outpath,flipud(fliplr(dewarped)))
+    topleft = array([xmin,ymin,polyl(xmin)])
+    topright = array([xmax,ymin,polyl(xmax)])
+    bottomleft = array([xmin,ymax,polyl(xmin)])
+    bottomright = array([xmax,ymax,polyl(xmax)])
+    points = array([topleft,topright,bottomleft,bottomright])
+    points = transform_hom(points,R2inv)
+    points = transform_hom(points,Rinv)
+    points = transform_hom(points,Qinv)
+    topleft,topright,bottomleft,bottomright = points
+    if topleft[0]>topright[0]:
+        dewarped = fliplr(dewarped)
+    if topleft[1]>bottomleft[1]:
+        dewarped = flipud(dewarped)
+    imsave(outpath,dewarped)
     return 1
 
 """
