@@ -22,7 +22,7 @@ from copy import copy
 """
 HARDCODED THINGS - FIXME!
 """
-debug = 0                                    # debug mode
+debug = 1                                    # debug mode
 scale = 1.00                                 # scale factor for output
 n_threads = multiprocessing.cpu_count()      # number of threads to use concurrently (default: #cores)
 """
@@ -339,7 +339,7 @@ def nextp_line(lp0,lp1,p):
     t = dot(pl,ll)/norm(ll)**2
     return array(lp0+t*ll)
 
-def remove_bg(img,bgcol,sigma=15,thresh=60):
+def remove_bg(img,bgcol,sigma=15,thresh=66):
     smoothed = gaussian_filter(img,(sigma,sigma,0))
     sub = abs(smoothed-bgcol)
     subsum = mean(sub,axis=2)
