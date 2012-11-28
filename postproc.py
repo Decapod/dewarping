@@ -22,18 +22,10 @@ if len(sys.argv)!=3:
 img = imread(sys.argv[1])
 gimg = mean(img,axis=2)
 mask = gimg!=0
-print "read input image"
-
-rowsums = array([sum(mask[i,:]) for i in range(mask.shape[0])])
-ynonzero = [i for i in range(rowsums.shape[0]) if rowsums[i]>0]
-ymin,ymax = min(ynonzero),max(ynonzero)
-colsums = array([sum(mask[:,i]) for i in range(mask.shape[1])])
-xnonzero = [i for i in range(colsums.shape[0]) if colsums[i]>0]
-xmin,xmax = min(xnonzero),max(xnonzero)
-cropped = gimg[ymin:ymax+1,xmin:xmax+1]
+cropped = gimg
 bg = cropped==0
-croppedimg = img[ymin:ymax+1,xmin:xmax+1]
-print "performed initial cropping"
+croppedimg = img
+print "read input image"
 
 def binarize(img,sigma=150.0,k=0.15):
     img = img.copy()
@@ -118,7 +110,7 @@ lefts,rights = array(lefts_new),array(rights_new)
 pagemid = threshed.shape[1]/2
 lnew,rnew = [],[]
 for i in range(len(lefts)):
-    if lefts[i][0]<pagemid and rights[i][0]>pagemid:
+    if lefts[i][0]<pagemid-0.2*threshed.shape[1] and rights[i][0]>pagemid+0.2*threshed.shape[1]:
         lnew.append(lefts[i])
         rnew.append(rights[i])
 lefts,rights = array(lnew),array(rnew)

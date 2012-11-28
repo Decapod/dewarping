@@ -77,10 +77,15 @@ if len(sys.argv)>5:
     if sys.argv[5]=="--only3d":
         print "Disabled postprocessing!"
         postproc = 0
+    elif sys.argv[5]=="--both":
+        print "Outputting 3d dewarping and postprocessing!"
+        both = 1
     else:
+        print "Default mode - output only postprocessed!"
         usage()
 elif len(sys.argv)==5:
     postproc = 1
+    both = 0
 else:
     usage()
 
@@ -648,6 +653,7 @@ def dewarp_page(points,outpath,poly_sep,direction,no_run,area_sep,maxratio=2.5,t
     ##         pos = p0+ratio*v
     ##         dewarped[j,i,:] = col_at(imgl_col,pos[0],pos[1],poly_sep,direction)
 
+    # normalize orientation
     topleft = array([xmin,ymin,polyl(xmin)])
     topright = array([xmax,ymin,polyl(xmax)])
     bottomleft = array([xmin,ymax,polyl(xmin)])
@@ -661,7 +667,19 @@ def dewarp_page(points,outpath,poly_sep,direction,no_run,area_sep,maxratio=2.5,t
         dewarped = fliplr(dewarped)
     if topleft[1]>bottomleft[1]:
         dewarped = flipud(dewarped)
-    imsave(outpath,dewarped)
+
+    # crop
+    gimg = mean(dewarped,axis=2)
+    mask = gimg!=0
+    rowsums = array([sum(mask[i,:]) for i in range(mask.shape[0])])
+    ynonzero = [i for i in range(rowsums.shape[0]) if rowsums[i]>0]
+    ymin,ymax = min(ynonzero),max(ynonzero)
+    colsums = array([sum(mask[:,i]) for i in range(mask.shape[1])])
+    xnonzero = [i for i in range(colsums.shape[0]) if colsums[i]>0]
+    xmin,xmax = min(xnonzero),max(xnonzero)
+    cropped = dewarped[ymin:ymax+1,xmin:xmax+1,:]
+            
+    imsave(outpath,cropped)
     return 1
 
 """
@@ -726,8 +744,17 @@ imgl_col = imgl.copy()
 imgl = mean(imgl,axis=2)
 imgr = mean(imgr,axis=2)
 
-tmpleft = os.tmpnam()+".png"
-tmpright = os.tmpnam()+".png"
+if debug:
+    tmpleft = sys.argv[4]+"/dewarped-left.png"
+    tmpright = sys.argv[4]+"/dewarped-right.png"
+else:
+    if both:
+        tmpleft = sys.argv[4]+"-dewarped-left.png"   #os.tmpnam()+".png"
+        tmpright = sys.argv[4]+"-dewarped-right.png" #os.tmpnam()+".png"
+    else:
+        tmpleft = os.tmpnam()+".png"
+        tmpright = os.tmpnam()+".png"
+
 run = 0
 dewarped_left,dewarped_right = 0,0
 while dewarped_left==0 or dewarped_right==0:
@@ -756,10 +783,16 @@ while dewarped_left==0 or dewarped_right==0:
     if not dewarped_left:
         print "Dewarping left page..."
         if debug:
-            imgout_l = sys.argv[4]+"/dewarped-left.png"
+            imgout_l = sys.argv[4]+"/postprocessed-left.png"
         else:
-            imgout_l = sys.argv[4]+"-left.png"
-        ret = dewarp_page(pleft,tmpleft,poly_l,1,run,area_sep)
+            if both:
+                imgout_l = sys.argv[4]+"-postprocessed-left.png"
+            else:
+                imgout_l = sys.argv[4]+"-left.png"
+        if postproc:
+            ret = dewarp_page(pleft,tmpleft,poly_l,1,run,area_sep)
+        else:
+            ret = dewarp_page(pleft,imgout_l,poly_l,1,run,area_sep)
         run += 1
         if ret:
             dewarped_left = 1
@@ -767,10 +800,16 @@ while dewarped_left==0 or dewarped_right==0:
     if not dewarped_right:
         print "Dewarping right page..."
         if debug:
-            imgout_r = sys.argv[4]+"/dewarped-right.png"
+            imgout_r = sys.argv[4]+"/postprocessed-right.png"
         else:
-            imgout_r = sys.argv[4]+"-right.png"
-        ret = dewarp_page(pright,tmpright,poly_l,0,run,area_sep)
+            if both:
+                imgout_r = sys.argv[4]+"-postprocessed-right.png"
+            else:
+                imgout_r = sys.argv[4]+"-right.png"
+        if postproc:
+            ret = dewarp_page(pright,tmpright,poly_l,0,run,area_sep)
+        else:
+            ret = dewarp_page(pright,imgout_r,poly_l,0,run,area_sep)
         run += 1
         if ret:
             dewarped_right = 1
@@ -786,15 +825,13 @@ if postproc:
     print "Starting postprocessing of right page..."
     os.system("./postproc.py "+tmpright+" "+imgout_r)
     print "...done!"
-else:
-    os.system("cp "+tmpleft+" "+imgout_l)
-    os.system("cp "+tmpright+" "+imgout_r)
 
+if not debug and not both and postproc:
+    os.unlink(tmpleft)
+    os.unlink(tmpright)
 if not debug:
     os.unlink(lpath)
     os.unlink(rpath)
-os.unlink(tmpleft)
-os.unlink(tmpright)
 
 shutil.rmtree(os.environ['MPLCONFIGDIR'])
 print "Finished!"
