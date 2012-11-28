@@ -10,6 +10,7 @@ import multiprocessing
 from itertools import izip
 from pylab import *
 from scipy.ndimage.filters import gaussian_filter
+from scipy.ndimage.measurements import label,find_objects
 from scipy.linalg import norm,inv
 from scipy.interpolate import interp1d,interp2d
 from scipy.optimize import fmin,fmin_cg,fmin_powell,fmin_bfgs,fmin_l_bfgs_b
@@ -338,13 +339,26 @@ def nextp_line(lp0,lp1,p):
     t = dot(pl,ll)/norm(ll)**2
     return array(lp0+t*ll)
 
-def remove_bg(img,bgcol,sigma=30,thresh=55):
+def remove_bg(img,bgcol,sigma=25,thresh=50):
     smoothed = gaussian_filter(img,(sigma,sigma,0))
     sub = abs(smoothed-bgcol)
     subsum = mean(sub,axis=2)
     bg = where(subsum<thresh,1,0)
     img = img.copy()
     img[bg==1,:] = 0
+    gimg = mean(img,axis=2)
+    nonblack = gimg!=0
+    imsave("nonblack.png",nonblack)
+    labeled,n = label(nonblack)
+    biggest,nbiggest = -1,-1
+    for i in range(1,n+1):
+        npix = sum(labeled==i)
+        if npix>nbiggest:
+            biggest = i
+            nbiggest = npix
+    for i in range(1,n+1):
+        if i!=biggest:
+            img[labeled==i] = zeros(3)
     return img
 
 def col_at(img,x,y,poly_sep,direction):
