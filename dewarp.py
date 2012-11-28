@@ -69,8 +69,7 @@ except:
     print "ERROR: You have to run colsel.py first to select page separator and background color!"
     sys.exit(2)
 
-if not debug:
-    warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore')
 test_imagemagick()
 test_sift()
 if len(sys.argv)>5:
@@ -339,7 +338,7 @@ def nextp_line(lp0,lp1,p):
     t = dot(pl,ll)/norm(ll)**2
     return array(lp0+t*ll)
 
-def remove_bg(img,bgcol,sigma=15,thresh=66):
+def remove_bg(img,bgcol,sigma=30,thresh=55):
     smoothed = gaussian_filter(img,(sigma,sigma,0))
     sub = abs(smoothed-bgcol)
     subsum = mean(sub,axis=2)
