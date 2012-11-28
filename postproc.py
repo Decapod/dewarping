@@ -109,8 +109,12 @@ lefts,rights = array(lefts_new),array(rights_new)
 
 pagemid = threshed.shape[1]/2
 lnew,rnew = [],[]
+leftmost = min([lefts[i][0] for i in range(len(lefts))])
+rightmost = max([rights[i][0] for i in range(len(rights))])
 for i in range(len(lefts)):
-    if lefts[i][0]<pagemid-0.2*threshed.shape[1] and rights[i][0]>pagemid+0.2*threshed.shape[1]:
+    #if lefts[i][0]<pagemid-0.2*threshed.shape[1] and rights[i][0]>pagemid+0.2*threshed.shape[1]:
+    if lefts[i][0]<leftmost+0.15*threshed.shape[1] and \
+       rights[i][0]>rightmost-0.15*threshed.shape[1]:
         lnew.append(lefts[i])
         rnew.append(rights[i])
 lefts,rights = array(lnew),array(rnew)
@@ -130,13 +134,16 @@ def linefit(points,thresh=threshval):
         cands = array(cands)
         if len(cands)==0:
             return linefit(points,thresh=thresh+0.0075*threshed.shape[1])
-    return line
+    try:
+        return line
+    except:
+        return None
 
 left = linefit(lefts)
 right = linefit(rights)
 print "done!"
 
-if right(0)<pagemid+0.2*(right(0)-left(0)) or left(0)>pagemid-0.2*(right(0)-left(0)):
+if not left or not right or right(0)<pagemid+0.2*(right(0)-left(0)) or left(0)>pagemid-0.2*(right(0)-left(0)):
     print "unable to reliably detect text-lines... (weird pageframe) aborting postprocessing!"
     imsave(sys.argv[2],croppedimg)
     sys.exit(0)
