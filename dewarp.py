@@ -348,7 +348,6 @@ def remove_bg(img,bgcol,sigma=25,thresh=50):
     img[bg==1,:] = 0
     gimg = mean(img,axis=2)
     nonblack = gimg!=0
-    imsave("nonblack.png",nonblack)
     labeled,n = label(nonblack)
     biggest,nbiggest = -1,-1
     for i in range(1,n+1):
