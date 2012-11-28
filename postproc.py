@@ -216,7 +216,7 @@ line[0] += threshed.shape[0]-valmax-1
 lines.append(line)
 print "done!"
 
-if len(lines)<10:
+if len(lines)<6:
     print "unable to reliably detect text-lines... (too few) aborting postprocessing!"
     imsave(sys.argv[2],croppedimg)
     sys.exit(0)

@@ -22,7 +22,7 @@ from copy import copy
 """
 HARDCODED THINGS - FIXME!
 """
-debug = 1                                    # debug mode
+debug = 0                                    # debug mode
 scale = 1.00                                 # scale factor for output
 n_threads = multiprocessing.cpu_count()      # number of threads to use concurrently (default: #cores)
 """
