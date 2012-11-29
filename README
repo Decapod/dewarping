@@ -1,0 +1,30 @@
+DECAPOD STEREO DEWARPING
+========================
+
+directories
+-----------
+- calibration-data: contains calibration data for Fuji W3
+- calibration-images: chessboard images taken with Fuji W3 for calibration
+- hack: prototypical code
+- testing-book01: ten stereo images for testing
+
+required libraries
+------------------
+- imagemagick
+- numpy
+- scipy
+- opencv
+- pyflann
+- vlfeat
+
+example usage - calibration
+---------------------------
+./calibrate.py calibration-images 9 6 calibration-data
+
+This uses the chessboard images in directory calibration-images. Each chessboard has 9x6 inner corners. The resulting camera matrices are persisted into directory calibration-data.
+
+example usage - dewarping
+-------------------------
+./dewarp.py calibration-data left.jpg right.jpg dewarped
+
+This uses the calibration matrices from directory calibration-data to perform stereo dewarping of the image pair given by left.jpg and right.jpg. The dewarped output is then persisted to dewarped-left.png and dewarped-right.png.
