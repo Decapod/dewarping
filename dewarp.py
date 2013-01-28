@@ -427,7 +427,6 @@ def polylen(poly,valmin,valmax,granularity=100000,target=-1):
 def findpos(poly,parea,ratio,fr,xmax):
     return polylen(poly,fr,xmax,target=ratio*parea)
 
-
 def process_col(i):
     global steps,polyl,al,polyu,au,xmin,xmax,ymin,ymax,R2inv,Rinv,Qinv,height,poly_sep,direction,imgl_col,mattrans
     ratio = i*1./(steps-1)
@@ -436,10 +435,10 @@ def process_col(i):
     p0 = array([targetl,ymin,polyl(targetl)])
     p1 = array([targetu,ymax,polyu(targetu)])
     points = array([p0,p1])
-    #pback = transform_hom(points,R2inv)
-    #pback = transform_hom(pback,Rinv)
-    #pback = transform_hom(pback,Qinv)
-    pback = transform_hom(points,mattrans)
+    pback = transform_hom(points,R2inv)
+    pback = transform_hom(pback,Rinv)
+    pback = transform_hom(pback,Qinv)
+    #pback = transform_hom(points,mattrans)
     p0,p1 = pback
     v = p1-p0
     column = zeros((height,1,3))
