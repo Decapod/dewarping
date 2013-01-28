@@ -2,7 +2,7 @@ import math
 import numpy as np
 import cv
 
-__p_corner = cv.CV_CALIB_CB_ADAPTIVE_THRESH
+__p_corner = cv.CV_CALIB_CB_NORMALIZE_IMAGE+cv.CV_CALIB_CB_ADAPTIVE_THRESH+cv.CV_CALIB_CB_FILTER_QUADS
 __p_cam = cv.CV_CALIB_FIX_PRINCIPAL_POINT
 __p_rig = cv.CV_CALIB_FIX_INTRINSIC
 
