@@ -10,7 +10,7 @@ import multiprocessing
 from itertools import izip
 from pylab import *
 from scipy.ndimage.filters import gaussian_filter
-from scipy.ndimage.measurements import label,find_objects
+from scipy.ndimage import measurements
 from scipy.linalg import norm,inv
 from scipy.interpolate import interp1d,interp2d
 from scipy.optimize import fmin,fmin_cg,fmin_powell,fmin_bfgs,fmin_l_bfgs_b
@@ -348,7 +348,7 @@ def remove_bg(img,bgcol,sigma=25,thresh=50):
     img[bg==1,:] = 0
     gimg = mean(img,axis=2)
     nonblack = gimg!=0
-    labeled,n = label(nonblack)
+    labeled,n = measurements.label(nonblack)
     biggest,nbiggest = -1,-1
     for i in range(1,n+1):
         npix = sum(labeled==i)
@@ -361,36 +361,23 @@ def remove_bg(img,bgcol,sigma=25,thresh=50):
     return img
 
 def col_at(img,x,y,poly_sep,direction):
-    xl = floor(x)
+    if x<0 or y<0:
+        return 0
     xh = ceil(x)
-    yl = floor(y)
+    if xh>=img.shape[1]:
+        return 0
     yh = ceil(y)
-    xsep = poly_sep(y)
-    if direction and x>xsep:
+    if yh>=img.shape[0]:
         return 0
-    elif not direction and x<xsep:
+    if direction!=(x<poly_sep(y)):
         return 0
-    if xl<0 or yl<0:
-        return 0
-    elif xh>=img.shape[1] or yh>=img.shape[0]:
-        return 0
-    #if x==xl or x==xh:
-    #    xp = [yl,yh]
-    #    fp = [img[yl,x],img[yh,x]]
-    #    return interp(y,xp,fp)
-    #if y==yl or y==yh:
-    #    xp = [xl,xh]
-    #    fp = [img[y,xl],img[y,xh]]
-    #    return interp(x,xp,fp)
-    xs = [xl,xh,xl,xh]
-    ys = [yl,yl,yh,yh]
-    zr = [img[yl,xl,0],img[yl,xh,0],img[yh,xl,0],img[yh,xh,0]]
-    zg = [img[yl,xl,1],img[yl,xh,1],img[yh,xl,1],img[yh,xh,1]]
-    zb = [img[yl,xl,2],img[yl,xh,2],img[yh,xl,2],img[yh,xh,2]]
-    r = interp2d(xs,ys,zr)
-    g = interp2d(xs,ys,zg)
-    b = interp2d(xs,ys,zb)
-    return r(x,y),g(x,y),b(x,y)
+    xl = floor(x)
+    yl = floor(y)
+    xhd = xh-x
+    yhd = yh-y
+    xld = x-xl
+    yld = y-yl
+    return img[yl,xl]*xhd*yhd+img[yl,xh]*xld*yhd+img[yh,xl]*xhd*yld+img[yh,xh]*xld*yld
 
 def dist_point_plane(p,a,b,c):
     n = cross(b-a,c-a)
@@ -647,26 +634,6 @@ def dewarp_page(points,outpath,poly_sep,direction,no_run,area_sep,maxratio=2.5,t
     for i in range(len(columns)):
         dewarped[:,i,:] = columns[i][:,0,:]
     
-    ## for i in range(steps):
-    ##     if i%floor(steps*0.1)==0:
-    ##         p = i/floor(steps*0.1)
-    ##         print "  "+str(int(p*10))+"% done"
-    ##     ratio = i*1./(steps-1)
-    ##     targetl = findpos(polyl,al,ratio,xmin,xmax)
-    ##     targetu = findpos(polyu,au,ratio,xmin,xmax)
-    ##     p0 = array([targetl,ymin,polyl(targetl)])
-    ##     p1 = array([targetu,ymax,polyu(targetu)])
-    ##     points = array([p0,p1])
-    ##     pback = transform_hom(points,R2inv)
-    ##     pback = transform_hom(pback,Rinv)
-    ##     pback = transform_hom(pback,Qinv)
-    ##     p0,p1 = pback
-    ##     v = p1-p0
-    ##     for j in range(height):
-    ##         ratio = j*1./(height-1)
-    ##         pos = p0+ratio*v
-    ##         dewarped[j,i,:] = col_at(imgl_col,pos[0],pos[1],poly_sep,direction)
-
     # normalize orientation
     topleft = array([xmin,ymin,polyl(xmin)])
     topright = array([xmax,ymin,polyl(xmax)])
@@ -681,8 +648,6 @@ def dewarp_page(points,outpath,poly_sep,direction,no_run,area_sep,maxratio=2.5,t
         dewarped = fliplr(dewarped)
     if topleft[1]>bottomleft[1]:
         dewarped = flipud(dewarped)
-
-    imsave("testout.png",dewarped)
 
     # crop
     gimg = mean(dewarped,axis=2)
