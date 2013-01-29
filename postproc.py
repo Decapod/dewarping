@@ -9,7 +9,7 @@ from pylab import *
 import sys
 from scipy.ndimage.filters import uniform_filter,gaussian_filter
 from scipy.ndimage.interpolation import rotate,zoom
-from scipy.ndimage.measurements import label,find_objects
+from scipy.ndimage import measurements
 from scipy.interpolate import interp2d
 from scipy.optimize import fmin
 from scipy.misc import imsave
@@ -55,8 +55,8 @@ binarized = 255-binarized
 print "binarized image"
 
 # remove big binarization artifacts (mainly caused by page separator string)
-labels,_ = label(binarized)
-objs = find_objects(labels)
+labels,_ = measurements.label(binarized)
+objs = measurements.find_objects(labels)
 for i,o in enumerate(objs):
     if o[0].stop-o[0].start<0.005*binarized.shape[0]:
         binarized[labels==i+1] = 0
@@ -83,8 +83,8 @@ def getright(obj,threshed=threshed):
                 return (x,y)
 
 print "detecting pageframe...",
-cands,n = label(threshed)
-objs = find_objects(cands)
+cands,n = measurements.label(threshed)
+objs = measurements.find_objects(cands)
 lefts,rights = [],[]
 for o in objs:
     l = getleft(o)
@@ -229,35 +229,21 @@ if len(lines)<6:
     sys.exit(0)
 
 def col_at(img,x,y):
-    xl = floor(x)
+    if x<0 or y<0:
+        return 0
     xh = ceil(x)
-    yl = floor(y)
+    if xh>=img.shape[1]:
+        return 0
     yh = ceil(y)
-    if x==xl or x==xh:
-        xp = [yl,yh]
-        fr = [img[yl,x,0],img[yh,x,0]]
-        fg = [img[yl,x,1],img[yh,x,1]]
-        fb = [img[yl,x,2],img[yh,x,2]]
-        return interp(y,xp,fr),interp(y,xp,fg),interp(y,xp,fb)
-    if y==yl or y==yh:
-        xp = [xl,xh]
-        fr = [img[y,xl,0],img[y,xh,0]]
-        fg = [img[y,xl,1],img[y,xh,1]]
-        fb = [img[y,xl,2],img[y,xh,2]]
-        return interp(x,xp,fr),interp(x,xp,fg),interp(x,xp,fb)
-    if xl<0 or yl<0:
+    if yh>=img.shape[0]:
         return 0
-    elif xh>=img.shape[1] or yh>=img.shape[0]:
-        return 0
-    xs = [xl,xh,xl,xh]
-    ys = [yl,yl,yh,yh]
-    zr = [img[yl,xl,0],img[yl,xh,0],img[yh,xl,0],img[yh,xh,0]]
-    zg = [img[yl,xl,1],img[yl,xh,1],img[yh,xl,1],img[yh,xh,1]]
-    zb = [img[yl,xl,2],img[yl,xh,2],img[yh,xl,2],img[yh,xh,2]]
-    r = interp2d(xs,ys,zr)
-    g = interp2d(xs,ys,zg)
-    b = interp2d(xs,ys,zb)
-    return r(x,y),g(x,y),b(x,y)
+    xl = floor(x)
+    yl = floor(y)
+    xhd = xh-x
+    yhd = yh-y
+    xld = x-xl
+    yld = y-yl
+    return img[yl,xl]*xhd*yhd+img[yl,xh]*xld*yhd+img[yh,xl]*xhd*yld+img[yh,xh]*xld*yld
 
 polymap = dict()
 def polylen(poly,valmin,valmax,granularity=10000,target=-1):
