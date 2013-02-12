@@ -216,17 +216,22 @@ def pagesep(img,maxdist=5,r=sepcol_r,g=sepcol_g,b=sepcol_b):
                 num += 1
         counts[x] = num
     # find feasible candidates
-    minpixels = 0.15*img.shape[0]
     candidates = []
-    for key in counts.keys():
-        if counts[key]>minpixels:
-            candidates.append(key)
+    n_iter,multiplier = 0,0.15
+    while n_iter<5 and len(candidates)==0:
+        minpixels = multiplier*img.shape[0]
+        candidates = []
+        for key in counts.keys():
+            if counts[key]>minpixels:
+                candidates.append(key)
+        n_iter += 1
+        multiplier *= 0.5
     nearmid = array(candidates)-0.5*img.shape[1]
     index = argmin(abs(nearmid))
     mid = candidates[index]
-    lower,upper = mid-0.2*img.shape[1],mid+0.2*img.shape[1]
-    stick[:,:lower] = 0
-    stick[:,upper+1:] = 0
+    #lower,upper = mid-0.5*img.shape[1],mid+0.5*img.shape[1]   #0.2
+    #stick[:,:lower] = 0
+    #stick[:,upper+1:] = 0
     if debug:
         imsave(sys.argv[4]+"/stick.png",stick)
     # find horizontal mean of color per line
