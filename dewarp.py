@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import ctypes as C
 import os
 import tempfile
 os.environ['MPLCONFIGDIR'] = tempfile.mkdtemp()
