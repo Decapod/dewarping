@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from chelper import *
 import ctypes as C
 import os
 import tempfile
@@ -20,12 +21,11 @@ import cv
 import pyflann as flann
 from calib import load
 from copy import copy
-from chelper import *
 
 """
 HARDCODED THINGS - FIXME!
 """
-debug = 1                                    # debug mode
+debug = 0                                    # debug mode
 scale = 1.00                                 # scale factor for output
 n_threads = multiprocessing.cpu_count()      # number of threads to use concurrently (default: #cores)
 """
@@ -423,7 +423,7 @@ def findpos(poly,parea,ratio,fr,xmax):
 
 def process_col(i):
     global steps,polyl,al,polyu,au,xmin,xmax,ymin,ymax,R2inv,Rinv,Qinv,height,poly_sep,direction,imgl_col,mattrans
-    global cpoly_sep,cpoly_sep_order,cimgl_R,cimgl_G,cimg_B,dll
+    global cpoly_sep,cpoly_sep_order,cimgl_R,cimgl_G,cimgl_B,dll
     ratio = i*1./(steps-1)
     targetl = findpos(polyl,al,ratio,xmin,xmax)
     targetu = findpos(polyu,au,ratio,xmin,xmax)
@@ -443,6 +443,7 @@ def process_col(i):
         ratio = j*1./(height-1)
         pos = p0+ratio*v
         #column[j,0,:] = col_at(imgl_col,pos[0],pos[1],poly_sep,direction)
+        pos = C.c_double(pos[0]),C.c_double(pos[1])
         column[j,0,0] = ccol_at(cimgl_R,imgl_col.shape[0],imgl_col.shape[1],pos[0],pos[1],cpoly_sep,cpoly_sep_order,direction)
         column[j,0,1] = ccol_at(cimgl_G,imgl_col.shape[0],imgl_col.shape[1],pos[0],pos[1],cpoly_sep,cpoly_sep_order,direction)
         column[j,0,2] = ccol_at(cimgl_B,imgl_col.shape[0],imgl_col.shape[1],pos[0],pos[1],cpoly_sep,cpoly_sep_order,direction)
@@ -450,7 +451,7 @@ def process_col(i):
 
 def init_worker(args):
     global steps,polyl,al,polyu,au,xmin,xmax,ymin,ymax,R2inv,Rinv,Qinv,height,poly_sep,direction,imgl_col,mattrans
-    global cpoly_sep,cpoly_sep_order,cimgl_R,cimgl_G,cimg_B,dll
+    global cpoly_sep,cpoly_sep_order,cimgl_R,cimgl_G,cimgl_B,dll
     steps,polyl,al,polyu,au,xmin,xmax,ymin,ymax,R2inv,Rinv,Qinv,height,poly_sep,direction,imgl_col,mattrans = args
     cpoly_sep = poly_to_C(poly_sep)
     cpoly_sep_order = poly_sep.order+1
@@ -689,6 +690,10 @@ try:
         os.mkdir(sys.argv[4])
 except:
     pass
+
+print "Check whether C module is compiled and linked..."
+if not os.path.exists("./libdewarping.so"):
+    os.system("scons")
 
 print "Loading calibration data..."
 Cl,Cr,dl,dr,R,T,F,E,Pl,Pr,Rl,Rr,Q = load(sys.argv[1])

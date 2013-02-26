@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from chelper import *
+import ctypes as C
 import os
 import tempfile
 os.environ['MPLCONFIGDIR'] = tempfile.mkdtemp()
@@ -276,10 +278,14 @@ def polycut(side,tline):
 
 def init_worker_dewarp(args):
     global croppedimg,lines,left,right,pxwidth
+    global cimg_R,cimg_G,cimg_B,dll
     croppedimg,lines,left,right,pxwidth = args
+    cimg_R,cimg_G,cimg_B = colimg_to_C(croppedimg)
+    dll = C.CDLL("./libdewarping.so")
     
 def dewarp_pair(i): #image,line0,line1,left,right,pxwidth):
     global croppedimg,lines,left,right,pxwidth
+    global cimg_R,cimg_G,cimg_B,dll
     image = croppedimg
     line0,line1 = lines[i],lines[i+1]
     # determine where textline cuts left/right border
@@ -302,6 +308,10 @@ def dewarp_pair(i): #image,line0,line1,left,right,pxwidth):
     pxheight = int(ceil(pxwidth*height/width))
     # sample equidistantly between poly of upper/lower line in required resolution
     rect = zeros((pxheight,pxwidth,3))
+    ccol_at = dll['col_at']
+    ccol_at.restype = C.c_uint
+    polydummy = poly1d(0)
+    cpolydummy = poly_to_C(polydummy)
     for x in range(int(pxwidth)):
         xratio = 1.*x/(pxwidth-1)
         xtop = polylen(line0,pl0[0],pr0[0],target=xratio*tl)
@@ -311,7 +321,11 @@ def dewarp_pair(i): #image,line0,line1,left,right,pxwidth):
         for y in range(pxheight):
             yratio = 1.*y/(pxheight-1)
             ptarget = ptop+yratio*(pbottom-ptop)
-            rect[y,x] = col_at(croppedimg,ptarget[0],ptarget[1])
+            #rect[y,x] = col_at(croppedimg,ptarget[0],ptarget[1])
+            ptarget = C.c_double(ptarget[0]),C.c_double(ptarget[1])
+            rect[y,x,0] = ccol_at(cimg_R,croppedimg.shape[0],croppedimg.shape[1],ptarget[0],ptarget[1],cpolydummy,1,0)
+            rect[y,x,1] = ccol_at(cimg_G,croppedimg.shape[0],croppedimg.shape[1],ptarget[0],ptarget[1],cpolydummy,1,0)
+            rect[y,x,2] = ccol_at(cimg_B,croppedimg.shape[0],croppedimg.shape[1],ptarget[0],ptarget[1],cpolydummy,1,0)
     return rect
 
 print "starting dewarping..."
