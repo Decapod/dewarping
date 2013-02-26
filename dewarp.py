@@ -423,6 +423,7 @@ def findpos(poly,parea,ratio,fr,xmax):
 
 def process_col(i):
     global steps,polyl,al,polyu,au,xmin,xmax,ymin,ymax,R2inv,Rinv,Qinv,height,poly_sep,direction,imgl_col,mattrans
+    global cpoly_sep,cpoly_sep_order,cimgl_R,cimgl_G,cimg_B,dll
     ratio = i*1./(steps-1)
     targetl = findpos(polyl,al,ratio,xmin,xmax)
     targetu = findpos(polyu,au,ratio,xmin,xmax)
@@ -435,16 +436,26 @@ def process_col(i):
     #pback = transform_hom(points,mattrans)
     p0,p1 = pback
     v = p1-p0
+    ccol_at = dll['col_at']
+    ccol_at.restype = C.c_uint
     column = zeros((height,1,3))
     for j in range(height):
         ratio = j*1./(height-1)
         pos = p0+ratio*v
-        column[j,0,:] = col_at(imgl_col,pos[0],pos[1],poly_sep,direction)
+        #column[j,0,:] = col_at(imgl_col,pos[0],pos[1],poly_sep,direction)
+        column[j,0,0] = ccol_at(cimgl_R,imgl_col.shape[0],imgl_col.shape[1],pos[0],pos[1],cpoly_sep,cpoly_sep_order,direction)
+        column[j,0,1] = ccol_at(cimgl_G,imgl_col.shape[0],imgl_col.shape[1],pos[0],pos[1],cpoly_sep,cpoly_sep_order,direction)
+        column[j,0,2] = ccol_at(cimgl_B,imgl_col.shape[0],imgl_col.shape[1],pos[0],pos[1],cpoly_sep,cpoly_sep_order,direction)
     return column
 
 def init_worker(args):
     global steps,polyl,al,polyu,au,xmin,xmax,ymin,ymax,R2inv,Rinv,Qinv,height,poly_sep,direction,imgl_col,mattrans
+    global cpoly_sep,cpoly_sep_order,cimgl_R,cimgl_G,cimg_B,dll
     steps,polyl,al,polyu,au,xmin,xmax,ymin,ymax,R2inv,Rinv,Qinv,height,poly_sep,direction,imgl_col,mattrans = args
+    cpoly_sep = poly_to_C(poly_sep)
+    cpoly_sep_order = poly_sep.order+1
+    cimgl_R,cimgl_G,cimgl_B = colimg_to_C(imgl_col)
+    dll = C.CDLL("./libdewarping.so")
 
 def dewarp_page(points,outpath,poly_sep,direction,no_run,area_sep,maxratio=2.5,thresh=0.85,n_outer=75,degree=2):
     def best(q):
