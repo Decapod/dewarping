@@ -44,6 +44,27 @@ def poly_from_C(cpoly,n):
     return poly
 
 if sys.argv[0]=="./chelper.py":
+    def col_at(img,x,y,poly_sep,direction):
+        if x<0 or y<0:
+            return 0
+        xh = ceil(x)
+        if xh>=img.shape[1]:
+            return 0
+        yh = ceil(y)
+        if yh>=img.shape[0]:
+            return 0
+        if direction!=(x<poly_sep(y)):
+            return 0
+        xl = floor(x)
+        yl = floor(y)
+        xhd = xh-x
+        yhd = yh-y
+        xld = x-xl
+        yld = y-yl
+        return img[yl,xl]*xhd*yhd+img[yl,xh]*xld*yhd+img[yh,xl]*xhd*yld+img[yh,xh]*xld*yld
+
+    lib = C.CDLL("./libdewarping.so")
+    """
     from scipy.misc import imsave
     print "colimg_to_C"
     testimg = imread("left.png")
@@ -54,11 +75,32 @@ if sys.argv[0]=="./chelper.py":
     img = colimg_from_C(iR,iG,iB,testimg.shape[1],testimg.shape[0])
     imsave("testcolimg_from_C.png",img)
     print "=================================="
+    """
     print "poly_to_C"
     testpoly = poly1d([1,2,3.5])
-    p = poly_to_C(testpoly)
-    print p[0],p[1],p[2]
+    cp = poly_to_C(testpoly)
+    print cp[2],cp[1],cp[0]
     print "=================================="
     print "poly_from_C"
-    p = poly_from_C(p,3)
+    p = poly_from_C(cp,3)
     print p
+    print "=================================="
+    print "=================================="
+    print "poly evaluation in C"
+    print "poly(5.1) =",p(5.1)
+    eval_poly = lib.eval_poly
+    eval_poly.restype = C.c_double
+    print "cpoly(5.1) =",eval_poly(cp,3,C.c_double(5.1))
+    print "=================================="
+    print "interpolation in C"
+    testimg = imread("left.png")
+    iR,iG,iB = colimg_to_C(testimg)
+    print "col_at(img,101.1,101.1,0,0) =",col_at(testimg,101.75,101.75,poly1d(0),0)
+    col_at = lib.col_at
+    col_at.restype = C.c_uint
+    valR = col_at(iR,testimg.shape[0],testimg.shape[1],C.c_double(101.75),C.c_double(101.75),poly_to_C(poly1d(0)),1,0)
+    valG = col_at(iG,testimg.shape[0],testimg.shape[1],C.c_double(101.75),C.c_double(101.75),poly_to_C(poly1d(0)),1,0)
+    valB = col_at(iB,testimg.shape[0],testimg.shape[1],C.c_double(101.75),C.c_double(101.75),poly_to_C(poly1d(0)),1,0)
+    print "ccol_at(img,101.1,101.1,0,0) =",valR
+    print "ccol_at(img,101.1,101.1,0,0) =",valG
+    print "ccol_at(img,101.1,101.1,0,0) =",valB
