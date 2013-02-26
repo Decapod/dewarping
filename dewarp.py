@@ -20,6 +20,7 @@ import cv
 import pyflann as flann
 from calib import load
 from copy import copy
+from chelper import *
 
 """
 HARDCODED THINGS - FIXME!

@@ -2,8 +2,5 @@
 
 extern "C" {
 
-int bar() {
-    return 42;
-}
 
 }
