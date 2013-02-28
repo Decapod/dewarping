@@ -2,6 +2,7 @@
 
 from chelper import *
 import ctypes as C
+import warnings
 import os
 import tempfile
 os.environ['MPLCONFIGDIR'] = tempfile.mkdtemp()
@@ -21,6 +22,7 @@ if len(sys.argv)!=3:
     print "Postprocesses 3d dewarped output using text-lines."
     sys.exit(1)
 
+warnings.filterwarnings('ignore')
 img = imread(sys.argv[1])
 gimg = mean(img,axis=2)
 mask = gimg!=0
@@ -172,11 +174,21 @@ def minval(poly,fr,to,step=1):
     return minval
 
 def init_worker_lines(args):
-    global objects,threshed,leftpoly,rightpoly,threshval,cands
+    global objects,threshed,leftpoly,rightpoly,threshval,cands,linepixels
     objects,threshed,leftpoly,rightpoly,threshval,cands = args
+    #dll = C.CDLL("./libdewarping.so")
+    #get_line_pixels = dll['get_line_pixels']
+    #ccands = img_to_C(cands)
+    #whites = get_line_pixels(ccands,cands.shape[0],cands.shape[1],len(objs))
+    linepixels = [[] for i in range(len(objs)+1)]
+    for x in range(cands.shape[1]):
+        for y in range(cands.shape[0]):
+            val = cands[y,x]
+            if val!=0:
+                linepixels[val].append((x,y))
 
 def extract_line(i):
-    global objects,threshed,leftpoly,rightpoly,threshval,cands
+    global objects,threshed,leftpoly,rightpoly,threshval,cands,linepixels
     left = leftpoly
     right = rightpoly
     o = objects[i]
@@ -188,8 +200,11 @@ def extract_line(i):
     # fit poly to full width line
     #lefts.append(pl)
     #rights.append(pr)
-    whites = argwhere(cands==i+1)
-    whites = zip(map(lambda x:x[1],whites),map(lambda x:x[0],whites))
+    
+    #whites = argwhere(cands==i+1)
+    #whites = zip(map(lambda x:x[1],whites),map(lambda x:x[0],whites))
+    whites = linepixels[i+1]
+
     means = []
     for x in range(o[1].start,o[1].stop):
         ys = [y for (xi,y) in whites if xi==x]
@@ -347,31 +362,10 @@ for r in rects:
     dewarped[start:start+r.shape[0],:,:] = r
     start += r.shape[0]
 
-def crop(image):
-    gimage = mean(image,axis=2)
-    whites = argwhere(gimage!=0)
-    rowsum = zeros(image.shape[0])
-    for y,x in whites:
-        rowsum[y] += 1
-    top,bottom = -1,-1
-    for y in range(rowsum.shape[0]):
-        if top<0 and rowsum[y]>0:
-            top = y
-        if rowsum[y]>0:
-            bottom = y
-    colsum = zeros(image.shape[1])
-    for y,x in whites:
-        colsum[x] += 1
-    left,right = -1,-1
-    for x in range(colsum.shape[0]):
-        if left<0 and colsum[x]>0:
-            left = x
-        if colsum[x]>0:
-            right = x
-    return image[top:bottom+1,left:right+1]
-    
-result = crop(dewarped)
+tmppic = os.tmpnam()+'.png'
+imsave(tmppic,dewarped)
+os.system('convert -trim '+tmppic+' '+sys.argv[2])
+os.unlink(tmppic)
 print "performed final cropping"
-imsave(sys.argv[2],result)
 print "persisted postprocessed image"
 shutil.rmtree(os.environ['MPLCONFIGDIR'])

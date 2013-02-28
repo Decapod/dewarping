@@ -3,6 +3,25 @@ import sys
 from pylab import *
 import ctypes as C
 
+def img_to_C(img):
+    img -= amin(img)
+    img *= 255./amax(img)
+    h,w = img.shape[:2]
+    n = h*w
+    cimg_type = C.c_uint*n
+    cimg = cimg_type()
+    for x in range(w):
+        for y in range(h):
+            cimg[y*w+x] = img[y,x]
+    return cimg
+
+def img_from_C(img,w,h):
+    img = zeros((h,w))
+    for x in range(w):
+        for y in range(h):
+            img[y,x] = cimg[y*w+x]
+    return img
+
 def colimg_to_C(img):
     img -= amin(img)
     img *= 255./amax(img)

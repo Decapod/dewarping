@@ -28,6 +28,7 @@ HARDCODED THINGS - FIXME!
 debug = 0                                    # debug mode
 scale = 1.00                                 # scale factor for output
 n_threads = multiprocessing.cpu_count()      # number of threads to use concurrently (default: #cores)
+use_shm = 1
 """
 END HARDCODED
 """
@@ -79,6 +80,7 @@ if len(sys.argv)>5:
     if sys.argv[5]=="--only3d":
         print "Disabled postprocessing!"
         postproc = 0
+        both = 0
     elif sys.argv[5]=="--both":
         print "Outputting 3d dewarping and postprocessing!"
         postproc = 1
@@ -115,9 +117,13 @@ def sift(imgpath,img):
         if img[yc,xc]==0:
             return 1
         return 0
-    pgmout = os.tmpnam()+".pgm"
+    if not use_shm:
+        pgmout = os.tmpnam()+".pgm"
+        featsout = os.tmpnam()
+    else:
+        pgmout = '/dev/shm/'+os.tmpnam().split('/')[-1]+'.pgm'
+        featsout =  '/dev/shm/'+os.tmpnam().split('/')[-1]
     os.system("convert "+imgpath+" "+pgmout)
-    featsout = os.tmpnam()
     os.system("sift "+pgmout+" -o "+featsout)
     os.unlink(pgmout)
     featsfile = open(featsout,'rb')
@@ -139,7 +145,8 @@ def sift(imgpath,img):
     d = d[goods,:]
     return f,d
 
-def reconstruct3d(imgl_path,imgr_path,imgl,imgr):
+def match(x):
+    fl,dl,fr,dr = x
     def __match(dl,nnl,dr,nnr):
         matches = []
         for i in range(dl.shape[0]):
@@ -155,7 +162,6 @@ def reconstruct3d(imgl_path,imgr_path,imgl,imgr):
             # good match!
             matches.append((i,index))
         return matches
-
     def __ransac(fl,fr,matches):
         n = len(matches)
         fl_cv = cv.CreateMat(2,n,cv.CV_64F)
@@ -173,7 +179,16 @@ def reconstruct3d(imgl_path,imgr_path,imgl,imgr):
             if status[0,i] == 1:
                 matches_cleaned.append(matches[i])
         return matches_cleaned
+    
+    nnl = flann.FLANN()
+    nnl.build_index(dl,num_neighbors=2,target_precision=0.9999)
+    nnr = flann.FLANN()
+    nnr.build_index(dr,num_neighbors=2,target_precision=0.9999)
+    matches = __match(dl,nnl,dr,nnr)
+    matches = __ransac(fl,fr,matches)
+    return matches
 
+def reconstruct3d(imgl_path,imgr_path,imgl,imgr):
     # sift takes quite a bit of memory, ensure we have at least 8GB to run in parallel
     freeram = int(os.popen("free -m").readlines()[1].split()[1])
     if freeram>8000:
@@ -187,15 +202,10 @@ def reconstruct3d(imgl_path,imgr_path,imgl,imgr):
     pool.join()
     fl,dl = res_l.get()
     fr,dr = res_r.get()
-    nnl = flann.FLANN()
-    nnl.build_index(dl,num_neighbors=2,target_precision=0.9999)
-    nnr = flann.FLANN()
-    nnr.build_index(dr,num_neighbors=2,target_precision=0.9999)
-    #fl,dl,nnl = __sift(imgl_path,imgl)
-    #fr,dr,nnr = __sift(imgr_path,imgr)
-    matches = __match(dl,nnl,dr,nnr) 
-    matches = __ransac(fl,fr,matches)
-    return fl,fr,matches
+    pool = multiprocessing.Pool(processes=n_threads)
+    matches = pool.map(match,[(fl,dl,fr,dr) for i in range(n_threads)])
+    matches.sort(key=lambda x:len(x),reverse=1)
+    return fl,fr,matches[0]
 
 def pagesep(img,maxdist=5,r=sepcol_r,g=sepcol_g,b=sepcol_b):
     def find_col(img,col,thresh=0.25):
