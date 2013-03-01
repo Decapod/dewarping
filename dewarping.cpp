@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 
@@ -31,6 +32,31 @@ extern "C" {
         double val = double(img[yl*w+xl])*xhd*yhd+double(img[yl*w+xh])*xld*yhd \
                    + double(img[yh*w+xl])*xhd*yld+double(img[yh*w+xh])*xld*yld;
         return (unsigned int)round(val);
+    }
+
+    void calc_line_means(int* labels,double* means,int h,int w,int n_lines) {
+        int* ns = (int*)malloc(sizeof(int)*n_lines);
+        int* sums = (int*)malloc(sizeof(int)*n_lines);
+        for(int x=0;x<w;x++) {
+            for(int i=0;i<n_lines;i++) {
+                ns[i] = 0;
+                sums[i] = 0;
+            }
+            for(int y=0;y<h;y++) {
+                unsigned int val = labels[y*w+x];
+                if(val==0)
+                    continue;
+                ns[val-1]++;
+                sums[val-1] += y;
+            }
+            for(int i=0;i<n_lines;i++) {
+                if(ns[i]==0)
+                    continue;
+                means[i*w+x] = (double)sums[i]/(double)ns[i];
+            }
+        }
+        free(ns);
+        free(sums);
     }
 
 }
