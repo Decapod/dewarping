@@ -3,6 +3,22 @@ import sys
 from pylab import *
 import ctypes as C
 
+def arr2d_to_C(arr,type):
+    h,w = arr.shape
+    carr_type = type*(h*w)
+    carr = carr_type()
+    for i in range(w):
+        for j in range(h):
+            carr[j*w+i] = arr[j,i]
+    return carr
+
+def arr2d_from_C(carr,w,h):
+    arr = zeros((h,w))
+    for i in range(w):
+        for j in range(h):
+            arr[j,i] = carr[j*w+i]
+    return arr
+
 def img_to_C(img):
     img -= amin(img)
     img *= 255./amax(img)
@@ -15,7 +31,7 @@ def img_to_C(img):
             cimg[y*w+x] = img[y,x]
     return cimg
 
-def img_from_C(img,w,h):
+def img_from_C(cimg,w,h):
     img = zeros((h,w))
     for x in range(w):
         for y in range(h):

@@ -174,21 +174,17 @@ def minval(poly,fr,to,step=1):
     return minval
 
 def init_worker_lines(args):
-    global objects,threshed,leftpoly,rightpoly,threshval,cands,linepixels
-    objects,threshed,leftpoly,rightpoly,threshval,cands = args
-    #dll = C.CDLL("./libdewarping.so")
-    #get_line_pixels = dll['get_line_pixels']
-    #ccands = img_to_C(cands)
-    #whites = get_line_pixels(ccands,cands.shape[0],cands.shape[1],len(objs))
-    linepixels = [[] for i in range(len(objs)+1)]
-    for x in range(cands.shape[1]):
-        for y in range(cands.shape[0]):
-            val = cands[y,x]
-            if val!=0:
-                linepixels[val].append((x,y))
+    global objects,leftpoly,rightpoly,threshval,means
+    objects,threshed,leftpoly,rightpoly,threshval,cands,n_lines = args
+    ccands = arr2d_to_C(cands,C.c_int)
+    means = zeros((n_lines,cands.shape[1]))
+    cmeans = arr2d_to_C(means,C.c_double)    
+    dll = C.CDLL("./libdewarping.so")
+    dll['calc_line_means'](ccands,cmeans,cands.shape[0],cands.shape[1],n_lines)
+    means = arr2d_from_C(cmeans,means.shape[1],means.shape[0])
 
 def extract_line(i):
-    global objects,threshed,leftpoly,rightpoly,threshval,cands,linepixels
+    global objects,leftpoly,rightpoly,threshval,means
     left = leftpoly
     right = rightpoly
     o = objects[i]
@@ -197,27 +193,14 @@ def extract_line(i):
         return None
     if abs(pr[0]-right(pr[1]))>threshval:
         return None
-    # fit poly to full width line
-    #lefts.append(pl)
-    #rights.append(pr)
-    
-    #whites = argwhere(cands==i+1)
-    #whites = zip(map(lambda x:x[1],whites),map(lambda x:x[0],whites))
-    whites = linepixels[i+1]
-
-    means = []
-    for x in range(o[1].start,o[1].stop):
-        ys = [y for (xi,y) in whites if xi==x]
-        if len(ys)==0:
-            continue
-        means.append((x,mean(ys)))
-    poly = polyfit(map(lambda x:x[0],means),map(lambda x:x[1],means),deg=3)
+    lmeans = means[i,:]
+    lmeans = [(x,lmeans[x]) for x in range(len(lmeans)) if lmeans[x]>0]
+    poly = polyfit(map(lambda x:x[0],lmeans),map(lambda x:x[1],lmeans),deg=3)
     poly = poly1d(poly)
-    #lines.append(poly)
     return pl,pr,poly
 
 pool = multiprocessing.Pool(processes=multiprocessing.cpu_count(),initializer=init_worker_lines( \
-    (objs,threshed,left,right,threshval,cands)))
+    (objs,threshed,left,right,threshval,cands,len(objs))))
 results = pool.map(extract_line,range(len(objs)))
 for r in results:
     if r!=None:
